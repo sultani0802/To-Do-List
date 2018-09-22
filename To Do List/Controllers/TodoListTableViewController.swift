@@ -10,15 +10,31 @@ import UIKit
 
 class TodoListTableViewController: UITableViewController {
     
-    // MARK: - Variables
+    // MARK: - Constants
+    let ITEM_ARRAY_DEFAULT_KEY: String = "itemArray"
     let CELL_IDENTIFIER: String = "ToDoItemCell"
-    var itemArray = ["Milk", "Bread", "Chocolate"]
+
+    // MARK: - Variables
+    let defaults = UserDefaults.standard
+    var itemArray : [Item] = [Item]()
+    weak var addActionToEnable: UIAlertAction?
     
     // MARK: - View Methods
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        if let itemArrayData = defaults.data(forKey: ITEM_ARRAY_DEFAULT_KEY) {
+            // The code below is required to be able to save an array with custom object
+            // i.e. [Item] instead of [String]
+            // We have to encode our Item object to a Data object so that it can be saved/loaded to/from UserDefaults
+            let itemArraySaved = NSKeyedUnarchiver.unarchiveObject(with: itemArrayData) as! [Item]
+            itemArray = itemArraySaved
+        }
     }
     
+    @objc func addItemTextChanged(_ sender: UITextField) {
+        self.addActionToEnable?.isEnabled = true
+    }
     
     // MARK : - Table View Datasource Methods
     
@@ -29,7 +45,7 @@ class TodoListTableViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: CELL_IDENTIFIER, for: indexPath)
         
-        cell.textLabel?.text = itemArray[indexPath.row]
+        cell.textLabel?.text = itemArray[indexPath.row].title
         
         return cell
     }
@@ -57,18 +73,28 @@ class TodoListTableViewController: UITableViewController {
         // This closure is called when the textfield is ADDED to the alert controller
         alertController.addTextField { (alertTextField) in
             alertTextField.placeholder = "Enter item..."
+            alertTextField.addTarget(self, action: #selector(self.addItemTextChanged(_:)), for: .editingChanged)
             textField = alertTextField
         }
         
         // Add the item to the list
         let addAction = UIAlertAction(title: "Add", style: .default) { (action) in
-            self.itemArray.append(textField.text!)
+            self.itemArray.append(Item(t: textField.text!))
+            
+            // The code below is required to be able to save an array with custom object
+            // i.e. [Item] instead of [String]
+            // We have to encode our Item object to a Data object so that it can be saved to UserDefaults
+            let itemArrayData = NSKeyedArchiver.archivedData(withRootObject: self.itemArray)
+            self.defaults.set(itemArrayData, forKey: self.ITEM_ARRAY_DEFAULT_KEY) // Save the array to the user's phone
+           
             self.tableView.reloadData()
         }
         
         // Don't add the item to the list
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         
+        self.addActionToEnable = addAction
+        addAction.isEnabled = false // Disable the "Add" button until the user enters a string
         alertController.addAction(addAction)
         alertController.addAction(cancelAction)
         present(alertController, animated: true, completion: nil)
