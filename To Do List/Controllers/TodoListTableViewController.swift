@@ -13,7 +13,7 @@ class TodoListTableViewController: UITableViewController {
     // MARK: - Constants
     let ITEM_ARRAY_DEFAULT_KEY: String = "itemArray"
     let CELL_IDENTIFIER: String = "ToDoItemCell"
-
+    
     // MARK: - Variables
     let defaults = UserDefaults.standard
     var itemArray : [Item] = [Item]()
@@ -79,15 +79,18 @@ class TodoListTableViewController: UITableViewController {
         
         // Add the item to the list
         let addAction = UIAlertAction(title: "Add", style: .default) { (action) in
-            self.itemArray.append(Item(t: textField.text!))
-            
-            // The code below is required to be able to save an array with custom object
-            // i.e. [Item] instead of [String]
-            // We have to encode our Item object to a Data object so that it can be saved to UserDefaults
-            let itemArrayData = NSKeyedArchiver.archivedData(withRootObject: self.itemArray)
-            self.defaults.set(itemArrayData, forKey: self.ITEM_ARRAY_DEFAULT_KEY) // Save the array to the user's phone
-           
-            self.tableView.reloadData()
+            if textField.text?.trimmingCharacters(in: .whitespaces).isEmpty == false{ // Avoids adding empty strings to the array
+
+                self.itemArray.append(Item(t: textField.text!))
+                
+                // The code below is required to be able to save an array with custom object
+                // i.e. [Item] instead of [String]
+                // We have to encode our Item object to a Data object so that it can be saved to UserDefaults
+                let itemArrayData = NSKeyedArchiver.archivedData(withRootObject: self.itemArray)
+                self.defaults.set(itemArrayData, forKey: self.ITEM_ARRAY_DEFAULT_KEY) // Save the array to the user's phone
+                
+                self.tableView.reloadData()
+            }
         }
         
         // Don't add the item to the list
