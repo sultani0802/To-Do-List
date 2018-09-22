@@ -31,7 +31,14 @@
                             <outlet property="delegate" destination="FUV-LM-ifJ" id="X76-Kp-XWH"/>
                         </connections>
                     </tableView>
-                    <navigationItem key="navigationItem" title="To Do List" id="OCl-Kz-8ZM"/>
+                    <navigationItem key="navigationItem" title="To Do List" id="OCl-Kz-8ZM">
+                        <barButtonItem key="rightBarButtonItem" title="Item" systemItem="add" id="amG-LT-v5m">
+                            <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                            <connections>
+                                <action selector="addButtonPressed:" destination="FUV-LM-ifJ" id="Waw-HE-82V"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="alR-46-zug" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
