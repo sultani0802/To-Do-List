@@ -7,53 +7,64 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListTableViewController: UITableViewController {
     
     // MARK: - Constants
     let CELL_IDENTIFIER: String = "ToDoItemCell"
-    // For plist files:
-    // If we wanted to create a different plist that stores our data (for example, creating a plist for a to do list for your work
-    // We would create another dataFilePath with a different string as the parameter
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist") // Address to our plist file that will hold our local data
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext // Get access to our context
+    
     
     // MARK: - Variables
     var itemArray : [Item] = [Item]()
     weak var addActionToEnable: UIAlertAction?
     
+    
+    // MARK: - IB Outlets
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     // MARK: - View Methods
     override func viewDidLoad() {
         super.viewDidLoad()
+        searchBar.delegate = self
         loadData()
+        
+        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(TodoListTableViewController.dismissKeyboard))
+        view.addGestureRecognizer(tap)
     }
     
+    // This method is called when we detect that the user started typing in a new list item
     @objc func addItemTextChanged(_ sender: UITextField) {
         self.addActionToEnable?.isEnabled = true
     }
     
+
+    // MARK : - Save/Load Data Methods
     func saveData() {
-        let encoder = PropertyListEncoder()
+        do {
+            try context.save()
+        } catch {
+            print("Error saving context: \(context)")
+        }
+        tableView.reloadData()
+    }
+    
+    
+    func loadData(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+        // Go into database and get a reference to the Entity we want
+        // If we don't pass in an NSFetchRequest, then, load all the data in the database
         
         do {
-            let data = try encoder.encode(self.itemArray)
-            try data.write(to: self.dataFilePath!)
+            itemArray = try context.fetch(request) // Try and get that data from the context
         } catch {
-            print("Error encoding item array, \(error)")
+            print("Error fetching data from context: \(error)")
         }
+        
+        tableView.reloadData()
     }
     
     
-    func loadData() {
-        if let data = try? Data(contentsOf: dataFilePath!){
-            let decoder = PropertyListDecoder()
-            do {
-                itemArray = try decoder.decode([Item].self, from: data)
-            } catch {
-                print("Error decoding item array, \(error)")
-            }
-        }
-
-    }
     // MARK : - Table View Datasource Methods
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -82,30 +93,30 @@ class TodoListTableViewController: UITableViewController {
     
     
     // MARK: - IB Actions
-    
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
-        var textField: UITextField = UITextField() // Created to have access to the text the user enters
-        
+        var textField: UITextField = UITextField() // Created to have access to the variable when the closure executes
         let alertController = UIAlertController(title: "Add item to list", message: "", preferredStyle: .alert)
         
-        // This closure is called when the textfield is ADDED to the alert controller
+        // This closure is executed now
         alertController.addTextField { (alertTextField) in
             alertTextField.placeholder = "Enter item..."
-            alertTextField.addTarget(self, action: #selector(self.addItemTextChanged(_:)), for: .editingChanged)
-            textField = alertTextField
+            alertTextField.addTarget(self, action: #selector(self.addItemTextChanged(_:)), for: .editingChanged) // Listens for when the user types
+            textField = alertTextField // Need a reference to this local variable so that we can access it after this closure executes
         }
         
-        // Add the item to the list
+        // User clicked the 'Add' button
         let addAction = UIAlertAction(title: "Add", style: .default) { (action) in
-            if textField.text?.trimmingCharacters(in: .whitespaces).isEmpty == false{ // Avoids adding empty strings to the array
-
-                self.itemArray.append(Item(t: textField.text!, c: false))
+            if textField.text?.trimmingCharacters(in: .whitespaces).isEmpty == false{ // Check if the string the user entered isn't just spaces or empty
+                
+                let newItem = Item(context: self.context) // Create an instance of our Item entity in our Data Model
+                newItem.title = textField.text! // Must instantiate the properties because we declared that it can't be optional in our Data Base
+                newItem.checked = false
+                self.itemArray.append(newItem) // Add the new Item to our array
                 self.saveData()
-                self.tableView.reloadData()
             }
         }
         
-        // Don't add the item to the list
+        // Add a cancel button that does nothing when the user clicks it
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         
         self.addActionToEnable = addAction
@@ -113,5 +124,36 @@ class TodoListTableViewController: UITableViewController {
         alertController.addAction(addAction)
         alertController.addAction(cancelAction)
         present(alertController, animated: true, completion: nil)
+    }
+}
+
+
+
+// MARK: - Search Bar Methods
+extension TodoListTableViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        if searchBar.text?.trimmingCharacters(in: .whitespaces).isEmpty == false {
+            let request : NSFetchRequest<Item> = Item.fetchRequest()
+            let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!.trimmingCharacters(in: .whitespaces)) // Search for substrings that aren't case and diacratic sensitive and remove any extra spaces
+            let sortDescriptor = NSSortDescriptor(key: "title", ascending: true) // Sort using 'title' in alphabetical order
+            
+            request.predicate = predicate
+            request.sortDescriptors = [sortDescriptor]
+            
+            loadData(with: request)
+        }
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        // Everytime the search bar is editied, perform the operations below
+        
+        if searchBar.text?.count == 0 {
+            loadData()
+        }
+    }
+    
+    // Hide the keyboard if the user taps outside the keyboard
+    @objc func dismissKeyboard(){
+        self.searchBar.endEditing(true)
     }
 }
