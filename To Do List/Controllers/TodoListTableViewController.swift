@@ -33,6 +33,7 @@ class TodoListTableViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         searchBar.delegate = self
+        navigationItem.title = selectedCategory?.name
     }
     
     // This method is called when we detect that the user started typing in a new list item

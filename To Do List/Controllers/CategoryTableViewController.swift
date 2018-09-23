@@ -25,6 +25,7 @@ class CategoryTableViewController: UITableViewController {
         super.viewDidLoad()
         
         loadData()
+        self.navigationController?.navigationBar.barStyle = UIBarStyle.black // Change the 'Back' bar button item color to white
     }
     
     
