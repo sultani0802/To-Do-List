@@ -9,8 +9,7 @@
 - Haamed Sultani
 
 ## Screenshots
-![Category page](/categoryscreen.png)
-![Logged in HUD](/listscreen.png)
+
 
 
 ## Running the app
