@@ -11,31 +11,49 @@ import UIKit
 class TodoListTableViewController: UITableViewController {
     
     // MARK: - Constants
-    let ITEM_ARRAY_DEFAULT_KEY: String = "itemArray"
     let CELL_IDENTIFIER: String = "ToDoItemCell"
+    // For plist files:
+    // If we wanted to create a different plist that stores our data (for example, creating a plist for a to do list for your work
+    // We would create another dataFilePath with a different string as the parameter
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist") // Address to our plist file that will hold our local data
     
     // MARK: - Variables
-    let defaults = UserDefaults.standard
     var itemArray : [Item] = [Item]()
     weak var addActionToEnable: UIAlertAction?
     
     // MARK: - View Methods
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        if let itemArrayData = defaults.data(forKey: ITEM_ARRAY_DEFAULT_KEY) {
-            // The code below is required to be able to save an array with custom object
-            // i.e. [Item] instead of [String]
-            // We have to encode our Item object to a Data object so that it can be saved/loaded to/from UserDefaults
-            let itemArraySaved = NSKeyedUnarchiver.unarchiveObject(with: itemArrayData) as! [Item]
-            itemArray = itemArraySaved
-        }
+        loadData()
     }
     
     @objc func addItemTextChanged(_ sender: UITextField) {
         self.addActionToEnable?.isEnabled = true
     }
     
+    func saveData() {
+        let encoder = PropertyListEncoder()
+        
+        do {
+            let data = try encoder.encode(self.itemArray)
+            try data.write(to: self.dataFilePath!)
+        } catch {
+            print("Error encoding item array, \(error)")
+        }
+    }
+    
+    
+    func loadData() {
+        if let data = try? Data(contentsOf: dataFilePath!){
+            let decoder = PropertyListDecoder()
+            do {
+                itemArray = try decoder.decode([Item].self, from: data)
+            } catch {
+                print("Error decoding item array, \(error)")
+            }
+        }
+
+    }
     // MARK : - Table View Datasource Methods
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -56,9 +74,7 @@ class TodoListTableViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         // Check off/on the item in the list
         itemArray[indexPath.row].checked = !itemArray[indexPath.row].checked
-        
-        let itemArrayData = NSKeyedArchiver.archivedData(withRootObject: self.itemArray)
-        self.defaults.set(itemArrayData, forKey: self.ITEM_ARRAY_DEFAULT_KEY) // Save the array to the user's phone
+        saveData()
         
         tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true) // Deselect the cell
@@ -84,13 +100,7 @@ class TodoListTableViewController: UITableViewController {
             if textField.text?.trimmingCharacters(in: .whitespaces).isEmpty == false{ // Avoids adding empty strings to the array
 
                 self.itemArray.append(Item(t: textField.text!, c: false))
-                
-                // The code below is required to be able to save an array with custom object
-                // i.e. [Item] instead of [String]
-                // We have to encode our Item object to a Data object so that it can be saved to UserDefaults
-                let itemArrayData = NSKeyedArchiver.archivedData(withRootObject: self.itemArray)
-                self.defaults.set(itemArrayData, forKey: self.ITEM_ARRAY_DEFAULT_KEY) // Save the array to the user's phone
-                
+                self.saveData()
                 self.tableView.reloadData()
             }
         }
