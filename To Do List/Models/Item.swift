@@ -13,8 +13,9 @@ class Item: NSObject, NSCoding {
     var title: String = ""
     var checked: Bool = false
     
-    init(t: String) {
+    init(t: String, c: Bool) {
         title = t
+        checked = c
     }
     
     // The code below is required to be able to save an array with custom object
@@ -22,7 +23,8 @@ class Item: NSObject, NSCoding {
     // We have to encode our Item object to a Data object so that it can be saved to UserDefaults
     required convenience init(coder aDecoder: NSCoder) {
         let title = aDecoder.decodeObject(forKey: "title") as! String
-        self.init(t: title)
+        let checked = aDecoder.decodeBool(forKey: "checked") as! Bool
+        self.init(t: title, c: checked)
     }
     
     func encode(with aCoder: NSCoder) {

@@ -44,8 +44,10 @@ class TodoListTableViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: CELL_IDENTIFIER, for: indexPath)
+        let item = itemArray[indexPath.row]
         
-        cell.textLabel?.text = itemArray[indexPath.row].title
+        cell.textLabel?.text = item.title
+        cell.accessoryType = item.checked ? .checkmark : .none // Set the checkmark of the cell
         
         return cell
     }
@@ -53,12 +55,12 @@ class TodoListTableViewController: UITableViewController {
     // MARK: - Table View Delegate Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         // Check off/on the item in the list
-        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        } else {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
+        itemArray[indexPath.row].checked = !itemArray[indexPath.row].checked
         
+        let itemArrayData = NSKeyedArchiver.archivedData(withRootObject: self.itemArray)
+        self.defaults.set(itemArrayData, forKey: self.ITEM_ARRAY_DEFAULT_KEY) // Save the array to the user's phone
+        
+        tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true) // Deselect the cell
     }
     
@@ -81,7 +83,7 @@ class TodoListTableViewController: UITableViewController {
         let addAction = UIAlertAction(title: "Add", style: .default) { (action) in
             if textField.text?.trimmingCharacters(in: .whitespaces).isEmpty == false{ // Avoids adding empty strings to the array
 
-                self.itemArray.append(Item(t: textField.text!))
+                self.itemArray.append(Item(t: textField.text!, c: false))
                 
                 // The code below is required to be able to save an array with custom object
                 // i.e. [Item] instead of [String]
