@@ -7,17 +7,16 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class TodoListTableViewController: UITableViewController {
     
     // MARK: - Constants
     let CELL_IDENTIFIER: String = "ToDoItemCell"
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext // Get access to our context
-    
+    let realm = try! Realm()
     
     // MARK: - Variables
-    var itemArray : [Item] = [Item]()
+    var todoItems : Results<Item>?
     weak var addActionToEnable: UIAlertAction?
     // Call loadData() once this variable has a value
     var selectedCategory: Category? {
@@ -41,34 +40,13 @@ class TodoListTableViewController: UITableViewController {
         self.addActionToEnable?.isEnabled = true
     }
     
-
+    
     // MARK : - Save/Load Data Methods
-    func saveData() {
-        do {
-            try context.save()
-        } catch {
-            print("Error saving context: \(context)")
-        }
-        tableView.reloadData()
-    }
     
     
-    func loadData(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
-        // Go into database and get a reference to the Category we want we want with any additional predicates
-        // If we don't pass in an NSFetchRequest,
-        // If we don't pass in a predicate, then fetch all the items in the category
-        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
-        if let pred = predicate {
-            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, pred])
-        } else {
-            request.predicate = categoryPredicate
-        }
-        
-        do {
-            itemArray = try context.fetch(request) // Try and get that data from the context
-        } catch {
-            print("Error fetching data from context: \(error)")
-        }
+    
+    func loadData() {
+        todoItems = realm.objects(Item.self)
         
         tableView.reloadData()
     }
@@ -77,24 +55,34 @@ class TodoListTableViewController: UITableViewController {
     // MARK : - Table View Datasource Methods
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return itemArray.count
+        return todoItems?.count ?? 1
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: CELL_IDENTIFIER, for: indexPath)
-        let item = itemArray[indexPath.row]
         
-        cell.textLabel?.text = item.title
-        cell.accessoryType = item.checked ? .checkmark : .none // Set the checkmark of the cell
-        
+        if let item = todoItems?[indexPath.row] {
+            cell.textLabel?.text = item.title
+            cell.accessoryType = item.checked ? .checkmark : .none // Set the checkmark of the cell
+        } else {
+            cell.textLabel!.text = "No Items In To Do List"
+        }
         return cell
     }
     
     // MARK: - Table View Delegate Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         // Check off/on the item in the list
-        itemArray[indexPath.row].checked = !itemArray[indexPath.row].checked
-        saveData()
+        
+        if let item = todoItems?[indexPath.row] {
+            do {
+                try realm.write {
+                    item.checked = !item.checked
+                }
+            } catch {
+                print("Error trying to save checked status to Realm: \(error)")
+            }
+        }
         
         tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true) // Deselect the cell
@@ -121,13 +109,22 @@ class TodoListTableViewController: UITableViewController {
         let addAction = UIAlertAction(title: "Add", style: .default) { (action) in
             if textField.text?.trimmingCharacters(in: .whitespaces).isEmpty == false{ // Check if the string the user entered isn't just spaces or empty
                 
-                let newItem = Item(context: self.context) // Create an instance of our Item entity in our Data Model
-                newItem.title = textField.text! // Must instantiate the properties because we declared that it can't be optional in our Data Base
-                newItem.checked = false
-                newItem.parentCategory = self.selectedCategory
-                self.itemArray.append(newItem) // Add the new Item to our array
-                
-                self.saveData()
+                if let currentCategory = self.selectedCategory {
+                    do {
+                        try self.realm.write {
+                            let newItem = Item() // Create an instance of our Item entity
+                            newItem.title = (textField.text?.trimmingCharacters(in: .whitespaces))!
+                            newItem.dateCreated = Date()
+                            currentCategory.items.append(newItem) // Append to the items in the category
+                            self.realm.add(newItem)
+                        }                   // Save the data into our Realm DB
+                    } catch {
+                        print("Error saving context: \(error)")
+                    }
+                    
+                    
+                    self.tableView.reloadData()
+                }
             }
         }
         
@@ -148,20 +145,14 @@ class TodoListTableViewController: UITableViewController {
 extension TodoListTableViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         if searchBar.text?.trimmingCharacters(in: .whitespaces).isEmpty == false {
-            let request : NSFetchRequest<Item> = Item.fetchRequest()
-            let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!.trimmingCharacters(in: .whitespaces)) // Search for substrings that aren't case and diacratic sensitive and remove any extra spaces
-            let sortDescriptor = NSSortDescriptor(key: "title", ascending: true) // Sort in alphabetical order based on the item's title
-            
-            request.predicate = predicate
-            request.sortDescriptors = [sortDescriptor]
-            
-            loadData(with: request, predicate: predicate)
+            todoItems = todoItems?.filter("title CONTAINS[cd] %@", searchBar.text!.trimmingCharacters(in: .whitespaces)).sorted(byKeyPath: "dateCreated", ascending: true)
+            tableView.reloadData()
         }
     }
-    
+
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         // Everytime the search bar is editied, perform the operations below
-        
+
         if searchBar.text?.count == 0 {
             loadData()
         }
