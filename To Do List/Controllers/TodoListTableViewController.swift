@@ -9,7 +9,7 @@
 import UIKit
 import RealmSwift
 
-class TodoListTableViewController: UITableViewController {
+class TodoListTableViewController: SwipeTableViewController {
     
     // MARK: - Constants
     let CELL_IDENTIFIER: String = "ToDoItemCell"
@@ -42,15 +42,24 @@ class TodoListTableViewController: UITableViewController {
     
     
     // MARK : - Save/Load Data Methods
-    
-    
-    
     func loadData() {
         todoItems = realm.objects(Item.self)
         
         tableView.reloadData()
     }
     
+    //MARK: - Delete Data Model
+    override func updateModel(at indexPath: IndexPath) {
+        if let deleteItem = self.todoItems?[indexPath.row]{
+            do {
+                try self.realm.write {
+                    self.realm.delete(deleteItem)
+                }
+            } catch {
+                print("Error when trying to delete Category: \(error)")
+            }
+        }
+    }
     
     // MARK : - Table View Datasource Methods
     
@@ -59,7 +68,7 @@ class TodoListTableViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: CELL_IDENTIFIER, for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         if let item = todoItems?[indexPath.row] {
             cell.textLabel?.text = item.title
@@ -115,7 +124,6 @@ class TodoListTableViewController: UITableViewController {
                             let newItem = Item() // Create an instance of our Item entity
                             newItem.title = (textField.text?.trimmingCharacters(in: .whitespaces))!
                             newItem.dateCreated = Date()
-                            currentCategory.items.append(newItem) // Append to the items in the category
                             self.realm.add(newItem)
                         }                   // Save the data into our Realm DB
                     } catch {

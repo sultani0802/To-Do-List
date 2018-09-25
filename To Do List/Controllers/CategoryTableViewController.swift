@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryTableViewController: UITableViewController {
+class CategoryTableViewController: SwipeTableViewController {
     
     // MARK: - Constants
     let SEGUE_IDENTIFIER: String = "ShowListSegue"
@@ -48,6 +49,19 @@ class CategoryTableViewController: UITableViewController {
         tableView.reloadData() // Update the UI with the data
     }
     
+    //MARK: - Delete Data Model
+    override func updateModel(at indexPath: IndexPath) {
+        if let deleteCategory = self.categoryArray?[indexPath.row]{
+            do {
+                try self.realm.write {
+                    self.realm.delete(deleteCategory)
+                }
+            } catch {
+                print("Error when trying to delete Category: \(error)")
+            }
+        }
+    }
+    
     
     // MARK: - Table view data source
     
@@ -61,7 +75,7 @@ class CategoryTableViewController: UITableViewController {
     
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: CELL_IDENTIFIER, for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         if let category = categoryArray?[indexPath.row] {
             cell.textLabel?.text = category.name
