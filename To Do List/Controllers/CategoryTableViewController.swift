@@ -79,6 +79,9 @@ class CategoryTableViewController: SwipeTableViewController {
         
         if let category = categoryArray?[indexPath.row] {
             cell.textLabel?.text = category.name
+            let bgColor = UIColor(hexString: categoryArray?[indexPath.row].color ?? "1D9BF6")
+            cell.backgroundColor = bgColor
+            cell.textLabel?.textColor = UIColor.init(contrastingBlackOrWhiteColorOn: bgColor, isFlat: true)
         }
         
         return cell
@@ -124,7 +127,7 @@ class CategoryTableViewController: SwipeTableViewController {
                 // Instantiate a new instance of Category
                 let newCategory = Category()
                 newCategory.name = (textField.text?.trimmingCharacters(in: .whitespaces))!
-                
+                newCategory.color = (UIColor.randomFlat()?.hexValue())!
                 self.saveData(category: newCategory) // Update the UI
             }
         }
